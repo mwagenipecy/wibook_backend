@@ -3,10 +3,16 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+
+
+
+    //return view('landing');
+
+   return view('welcome');
+
 });
 
-Route::middleware([
+Route::middleware([   
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',

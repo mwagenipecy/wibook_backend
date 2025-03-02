@@ -55,10 +55,10 @@
 
         <!-- Navigation Links -->
         <div id="navLinks" class="hidden lg:flex space-x-8">
-            <a href="#" class="text-gray-800 hover:text-gray-600 font-semibold">Home</a>
-            <a href="#" class="text-gray-800 hover:text-gray-600 font-semibold">Service</a>
-            <a href="#" class="text-gray-800 hover:text-gray-600 font-semibold">About Us</a>
-            <a href="#" class="text-gray-800 hover:text-gray-600 font-semibold">Contact</a>
+            <a href="#" class="text-white hover:text-gray-600 font-semibold">Home</a>
+            <a href="#" class="text-white hover:text-gray-600 font-semibold">Service</a>
+            <a href="#" class="text-white  hover:text-gray-600 font-semibold">About Us</a>
+            <a href="#" class="text-white  hover:text-gray-600 font-semibold">Contact</a>
         </div>
     </div>
 
