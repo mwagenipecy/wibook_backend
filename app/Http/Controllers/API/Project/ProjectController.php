@@ -4,6 +4,9 @@ namespace App\Http\Controllers\API\Project;
 
 use App\Http\Controllers\BaseController;
 use App\Http\Resources\ProjectResource;
+use App\Http\Resources\ProjectTransactionResource;
+use App\Models\ProjectHasUser;
+use App\Models\ProjectTransaction;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Project;
@@ -32,22 +35,20 @@ class ProjectController extends BaseController
     {
         try {
             // Ensure the user exists and get the authenticated user ID
-            $userId = auth()->user()->id;
+            $userId =  auth()->user()->id ;
 
-            // Fetch projects that the user is assigned to using a relationship
-            // Assuming 'projects' is the relationship name on User model and 'user_id' is the pivot column
+        
             $projects = Project::whereHas('users', function ($query) use ($userId) {
                 $query->where('user_id', $userId);  // Modify this based on your pivot structure
             })->paginate(10);  // Pagination for better performance with large data
 
-            // Check if no projects were found
             if ($projects->isEmpty()) {
                 return $this->sendError('No projects found for this user', 'No projects available', 404);
             }
 
             return $this->sendResponse(ProjectResource::collection($projects), 'Successfully fetched projects', 200);
         } catch (\Exception $e) {
-            return $this->sendError($e->getMessage(), 'Failed to fetch projects or user not found', 500);
+            return $this->sendError($e->getMessage(), 'Failed to fetch projects or user not found'.$e->getMessage(), 500);
         }
     }
 
@@ -65,7 +66,7 @@ class ProjectController extends BaseController
         try {
 
             DB::beginTransaction();
-            $userId = auth()->user()->id;
+            $userId =  auth()->user()->id;
             $project = Project::create($validated);
             $result = $this->projectUserService->assignUserToProject($userId, $project->id);
             if (!$result['status']) {
@@ -79,7 +80,7 @@ class ProjectController extends BaseController
         } catch (\Exception $e) {
             // Rollback in case of any failure
             DB::rollBack();
-            return $this->sendError($e->getMessage(), 'Failed', 500);
+            return $this->sendError($e->getMessage(), $e->getMessage(), 500);
         }
     }
 
@@ -138,13 +139,54 @@ class ProjectController extends BaseController
     }
 
 
+    public function viewProject(Request $request){
+
+        $validated = $request->validate([
+            'project_id' => 'required|exists:projects,id', 
+        ]);
+
+
+        if (! $validated) {
+            return $this->sendError('something went wrong', 'something is wrong', 404);
+        }
+
+
+        // $request->project_id=1;
+
+        $project = Project::findOrFail($request->project_id);
+
+        
+
+         $projectTransaction =ProjectTransaction::where("project_id",$request->project_id)->get();
+
+         $userIds=  ProjectHasUser::where("project_id", $request->project_id)->pluck("user_id")->toArray();  
+         $projectUser= User::whereIn('id',$userIds)->get();
+       
+
+         $data=[
+
+             "projectData"=> new ProjectResource( $project),
+            "transactionHistory"=> ProjectTransactionResource::collection(($projectTransaction)),
+            "projectUsers"=> UserResource::collection($projectUser),
+
+
+         ];
+
+        //  return $data;
+
+
+         return $this->sendResponse(  $data, "Successfully created", 201);
+
+    }
+
+
 
     public function attachUserToProject(Request $request, $projectId)
     {
         try {
             // Validate the request data
             $validated = $request->validate([
-                'user_id' => 'required|exists:users,id', // Ensure the user exists in the 'users' table
+                'user_id' => 'required|exists:users,id', 
             ]);
 
             // Retrieve the authenticated user

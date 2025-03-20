@@ -11,7 +11,6 @@ class BaseController extends Controller
     public function sendResponse($result, $message, $code = 200)
     {
         try {
-            // Ensure $result is in the correct format
             if (is_array($result) || $result instanceof \Illuminate\Contracts\Support\Arrayable) {
                 $result = (object) $result;  // Convert arrays to objects for consistency
             }

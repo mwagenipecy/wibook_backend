@@ -17,7 +17,9 @@ class TransactionController extends BaseController
 
         try {
 
-            $transactions = ProjectTransaction::where('id', auth()->user()->id)->latest()->paginate(10);
+           // where('id', auth()->user()->id)->
+
+            $transactions = ProjectTransaction::where('user_id', auth()->user()->id)->latest()->get();
             return $this->sendResponse(
                 ProjectTransactionResource::collection($transactions),
                 'successfully ',
@@ -27,7 +29,7 @@ class TransactionController extends BaseController
 
             return $this->sendError(
                 $e->getMessage(),
-                'something went wrong',
+                $e->getMessage(),
                 500
             );
         }
@@ -43,24 +45,25 @@ class TransactionController extends BaseController
                 'description' => 'nullable|string',
                 'amount' => 'required|numeric',
                 'type' => 'required|in:income,expenditure',
-                'user_id' => 'nullable|exists:users,id',
                 'project_id' => 'required|exists:projects,id',
                 'date' => 'nullable|date',
             ]);
 
+            $validated ['user_id'] = auth()->user()->id;
             $transaction = ProjectTransaction::create($validated);
 
-
             return $this->sendResponse(
-                ProjectTransactionResource::collection($transaction),
+                ProjectTransactionResource::collection([$transaction]),
                 'successfully created',
                 201
             );
+
+            
         } catch (\Exception $e) {
 
             return $this->sendError(
                 $e->getMessage(),
-                'something went wrong',
+                'something went wrong'.$e->getMessage(),
                 500
             );
         }

@@ -19,7 +19,7 @@ class BillboardController extends BaseController
             $query->where('id',$request->id);
         }
         $output= $query->get();
-        return $this->sendResponse(new BillboardResource($output), "Successfully created", 201);
+        return $this->sendResponse(BillboardResource::collection($output), "Successfully created", 201);
     }
 
     

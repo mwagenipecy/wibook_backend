@@ -12,12 +12,13 @@ class SummaryResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array
+    public function toArray($request): array
     {
+        
         return [
 
-            "balance"=>12345,
-            "percent"=>45
+            'balance' => $this->resource['balance'],
+            "percent"=>$this->resource['percent']
         ];
     }
 }
