@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('receipt_path')->nullable();
             $table->string('description')->nullable();
-            $table->date('date')->default(DB::raw('CURRENT_TIMESTAMP'));  // Use CURRENT_TIMESTAMP
+            $table->date('date')->nullable();  // Use CURRENT_TIMESTAMP
             $table->double('amount')->default(0);
             $table->enum('record', ['income', 'expenditure'])->default('income');
             $table->string('status')->nullable();
