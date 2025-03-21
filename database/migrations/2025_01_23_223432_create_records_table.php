@@ -16,15 +16,16 @@ return new class extends Migration
             $table->id();
             $table->string('receipt_path')->nullable();
             $table->string('description')->nullable();
-            $table->date('date')->default(DB::raw('CURRENT_DATE'));
+            $table->date('date')->default(DB::raw('CURRENT_TIMESTAMP'));  // Use CURRENT_TIMESTAMP
             $table->double('amount')->default(0);
-            $table->enum('record',['income','expenditure'])->default('income');
+            $table->enum('record', ['income', 'expenditure'])->default('income');
             $table->string('status')->nullable();
             $table->unsignedBigInteger('project_id')->nullable();
             $table->timestamps();
-
+        
             $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
         });
+        
     }
 
     /**
