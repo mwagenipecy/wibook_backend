@@ -21,3 +21,22 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+
+Route::get('/download-app', function () {
+    $file = '/var/www/html/wibook_backend/wibook.apk';
+    
+    // Check if file exists
+    if (!file_exists($file)) {
+        abort(404);
+    }
+    
+    $headers = [
+        'Content-Type' => 'application/vnd.android.package-archive',
+        'Content-Disposition' => 'attachment; filename="wibook.apk"',
+    ];
+    
+    return response()->download($file, 'wibook.apk', $headers);
+})->name('download.apk');
+
+
