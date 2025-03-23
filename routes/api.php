@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Route;
 
 
 ///////////////// TESTING ////////////////////
-
 Route::get('test', function(){
   return "connection exists";
+
 });
 
 /** ========== PUBLIC ENDPOINTS =========== */
