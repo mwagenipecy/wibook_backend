@@ -25,31 +25,16 @@ class UserController extends BaseController
         $this->projectUserService = $projectUserService;
     }
 
-    public function getProfile() {
-        $user = User::find(auth()->id()); 
+    public function getProfile()
+    {
+        $authUserId = auth()->id(); // Get the authenticated user's ID
     
-        if (!$user) {
-            return $this->sendError("User not found", 404);
-        }
+        // Retrieve users but prioritize the authenticated user
+        $users = User::orderByRaw("id = ? DESC", [$authUserId])->get();
     
-        $data = [[ // Ensuring 'data' is a list with one object
-            'name' => $user->name,
-            'phone' => $user->phone,
-            'email' => $user->email,
-            'profile_photo_path' => $user->profile_photo_path,
-            'status' => $user->status,
-        ]];
-    
-        return response()->json([
-            'success' => true,
-            'message' => 'Successfully retrieved',
-            'data' => $data
-        ], 201);
+        return $this->sendResponse(UserResource::collection($users), "successfully", 200);
     }
     
-    
-    
-
 
     public function creatProjectMember(Request $request){
 
