@@ -25,11 +25,14 @@ class UserController extends BaseController
         $this->projectUserService = $projectUserService;
     }
 
-    public function getProfile(){
-
-        $users = User::find(auth()->user()->id);
-        return $this->sendResponse(new UserResource( $users ),"successfully",200);
+    public function getProfile() {
+        $user = User::find(auth()->id()); // auth()->id() is a cleaner way
+        if (!$user) {
+            return $this->sendError("User not found", 404);
+        }
+        return $this->sendResponse(new UserResource($user), "Successfully retrieved", 200);
     }
+    
 
 
     public function creatProjectMember(Request $request){
