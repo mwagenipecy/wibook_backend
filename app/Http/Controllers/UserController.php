@@ -32,18 +32,21 @@ class UserController extends BaseController
             return $this->sendError("User not found", 404);
         }
     
-        $data = [
-            [
-                'name' => $user->name,
-                'phone' => $user->phone,
-                'email' => $user->email,
-                'profile_photo_path' => $user->profile_photo_path,
-                'status' => $user->status,
-            ]
-        ];
+        $data = [[ // Ensuring 'data' is a list with one object
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'profile_photo_path' => $user->profile_photo_path,
+            'status' => $user->status,
+        ]];
     
-        return $this->sendResponse($data, "Successfully retrieved", 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully retrieved',
+            'data' => $data
+        ], 201);
     }
+    
     
     
 
