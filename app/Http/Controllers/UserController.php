@@ -26,12 +26,25 @@ class UserController extends BaseController
     }
 
     public function getProfile() {
-        $user = User::find(auth()->id()); // auth()->id() is a cleaner way
+        $user = User::find(auth()->id()); 
+    
         if (!$user) {
             return $this->sendError("User not found", 404);
         }
-        return $this->sendResponse(new UserResource($user), "Successfully retrieved", 200);
+    
+        $data = [
+            [
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'profile_photo_path' => $user->profile_photo_path,
+                'status' => $user->status,
+            ]
+        ];
+    
+        return $this->sendResponse($data, "Successfully retrieved", 200);
     }
+    
     
 
 
