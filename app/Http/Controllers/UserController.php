@@ -27,7 +27,7 @@ class UserController extends BaseController
 
     public function getProfile(){
 
-        $users = User::find(auth()->user()->id)->get();
+        $users = User::find(auth()->user()->id);
         return $this->sendResponse(new UserResource( $users ),"successfully",200);
     }
 
