@@ -40,10 +40,10 @@ class UserController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'phone' => ['required', 'string', 'regex:/^(07|06)\d{8}$/', 'unique:users'],
+            'phone' => ['required', 'string', 'regex:/^(07|06)\d{8}$/'],
             // 'password' => 'required|string|min:8|confirmed',
             'device_token' => 'nullable|string',
-            'email'=>'required|unique:users',
+            'email'=>'required',
             'project_id' => 'required|exists:projects,id',
             'profile_photo_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
 
@@ -62,20 +62,30 @@ class UserController extends BaseController
 
         DB::beginTransaction();
 
+        // check if user exists 
+
         try {
 
+            if(User::where('phone',$request->phone)->exists()){
+                $user=User::where('phone',$request->phone)->first();
+
+            }else{
+
+                $password="123456789";
+                // Create user
+                 $user = User::create([
+                    'name' => $request->name,
+                    'phone' => $request->phone,
+                    'email' => $request->email,
+                    'password' => bcrypt($password),
+                    'status' => 'active',
+                    'device_token' => $request->device_token ? :''
+                 ]);
+            }
 
 
-            $password="123456789";
-            // Create user
-             $user = User::create([
-                'name' => $request->name,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'password' => bcrypt($password),
-                'status' => 'active',
-                'device_token' => $request->device_token ? :''
-             ]);
+
+         
 
 
              //TODO  send email to user with login credentials
