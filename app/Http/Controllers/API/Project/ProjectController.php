@@ -65,8 +65,12 @@ class ProjectController extends BaseController
 
         try {
 
+            
+
             DB::beginTransaction();
             $userId =  auth()->user()->id;
+            $validated['user_id']=$userId;
+            $validated['status']='active';
             $project = Project::create($validated);
             $result = $this->projectUserService->assignUserToProject($userId, $project->id);
             if (!$result['status']) {
