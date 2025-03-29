@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -40,3 +41,5 @@ Route::get('/download-app', function () {
 })->name('download.apk');
 
 
+
+Route::post('comments',[CommentController::class,'saveComments'])->name('register.comment');

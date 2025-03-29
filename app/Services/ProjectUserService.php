@@ -37,6 +37,7 @@ class ProjectUserService
         } catch (\Exception $e) {
             return ['status' => false, 'message' => 'Something went wrong'];
         }
+        
     }
 
     
