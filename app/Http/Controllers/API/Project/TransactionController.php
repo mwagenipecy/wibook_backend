@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Project;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectTransactionResource;
+use App\Models\ProjectHasUser;
 use App\Models\ProjectTransaction;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,12 @@ class TransactionController extends BaseController
 
            // where('id', auth()->user()->id)->
 
-            $transactions = ProjectTransaction::where('user_id', auth()->user()->id)->latest()->get();
+           $projectId=ProjectHasUser::where('user_id', auth()->user()->id)->pluck('project_id')->toArray();
+            if ($projectId->isEmpty()) {
+                return $this->sendError('No projects found for this user', 'No projects found', 404);
+            }
+
+            $transactions = ProjectTransaction::whereIn('project_id', $projectId)->latest()->get();
             return $this->sendResponse(
                 ProjectTransactionResource::collection($transactions),
                 'successfully ',

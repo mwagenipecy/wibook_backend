@@ -43,3 +43,9 @@ Route::get('/download-app', function () {
 
 
 Route::post('comments',[CommentController::class,'saveComments'])->name('register.comment');
+
+
+
+Route::fallback(function () {
+    return redirect('/');
+});
