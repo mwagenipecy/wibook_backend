@@ -21,9 +21,9 @@ class TransactionController extends BaseController
            // where('id', auth()->user()->id)->
 
            $projectId=ProjectHasUser::where('user_id', auth()->user()->id)->pluck('project_id')->toArray();
-            if ($projectId->isEmpty()) {
-                return $this->sendError('No projects found for this user', 'No projects found', 404);
-            }
+            // if ($projectId) {
+            //     return $this->sendError('No projects found for this user', 'No projects found', 404);
+            // }
 
             $transactions = ProjectTransaction::whereIn('project_id', $projectId)->latest()->get();
             return $this->sendResponse(
