@@ -76,12 +76,16 @@ Route::group(['prefix' => 'project'], function () {
 });
 
 /** ===================== TRANSACTION REPORTING =========================== */
-Route::group(['prefix' => 'transactions'], function () {
-    // Get transaction reports with filtering
-    Route::get('reports',[TransactionController::class,'getTransactionReports'])->name('api.transactions.reports');
-    
-    // Get transaction summary statistics
-    Route::get('summary',[TransactionController::class,'getTransactionSummary'])->name('api.transactions.summary');
+Route::group(['prefix' => 'transaction'], function () {
+
+  Route::get('list',[TransactionController::class,'transactionList'])->name('api.transaction.list');
+
+  Route::post('create',[TransactionController::class,'store'])->name('api.transaction.create');
+
+  // New transaction reporting endpoints
+  Route::get('reports',[TransactionController::class,'getTransactionReports'])->name('api.transaction.reports');
+  Route::get('summary',[TransactionController::class,'getTransactionSummary'])->name('api.transaction.summary');
+
 });
 
 
@@ -91,18 +95,6 @@ Route::group(['prefix'=> 'user'], function () {
   Route::post('create',[UserController::class,'creatProjectMember'])->name('api.user.create');
 }
 );
-
-
-
-/** ===================== CREATE /EDIT / VIEW AND DELETE PROJECT =========================== */
-Route::group(['prefix' => 'transaction'], function () {
-
-  Route::get('list',[TransactionController::class,'transactionList'])->name('api.transaction.list');
-
-  Route::post('create',[TransactionController::class,'store'])->name('api.transaction.create');
-
-
-});
 
 
 
