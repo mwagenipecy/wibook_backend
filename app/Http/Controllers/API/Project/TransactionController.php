@@ -38,8 +38,13 @@ class TransactionController extends BaseController
     public function getTransactionReports(Request $request)
     {
         try {
+            \Log::info('getTransactionReports called with request:', $request->all());
+            
             $user = Auth::user();
+            \Log::info('User authenticated:', ['user_id' => $user->id]);
+            
             $userProjects = $user->projects()->pluck('projects.id')->toArray();
+            \Log::info('User projects:', $userProjects);
             
             $query = ProjectTransaction::whereIn('project_id', $userProjects)
                 ->with(['user', 'project']);
@@ -47,28 +52,35 @@ class TransactionController extends BaseController
             // Filter by project if specified
             if ($request->has('project_id') && $request->project_id) {
                 $query->where('project_id', $request->project_id);
+                \Log::info('Filtering by project_id:', ['project_id' => $request->project_id]);
             }
             
             // Filter by year if specified
             if ($request->has('year') && $request->year) {
                 $query->whereYear('date', $request->year);
+                \Log::info('Filtering by year:', ['year' => $request->year]);
             }
             
             // Filter by date range if specified
             if ($request->has('start_date') && $request->start_date) {
                 $query->where('date', '>=', $request->start_date);
+                \Log::info('Filtering by start_date:', ['start_date' => $request->start_date]);
             }
             
             if ($request->has('end_date') && $request->end_date) {
                 $query->where('date', '<=', $request->end_date . ' 23:59:59');
+                \Log::info('Filtering by end_date:', ['end_date' => $request->end_date]);
             }
             
             // Filter by transaction type if specified
             if ($request->has('type') && $request->type) {
                 $query->where('type', $request->type);
+                \Log::info('Filtering by type:', ['type' => $request->type]);
             }
             
+            \Log::info('Executing query...');
             $transactions = $query->latest()->get();
+            \Log::info('Query executed, transactions count:', ['count' => $transactions->count()]);
             
             // Calculate summary statistics
             $totalIncome = $transactions->where('type', 'income')->sum('amount');
@@ -94,8 +106,15 @@ class TransactionController extends BaseController
                 ]
             ];
             
+            \Log::info('Report data prepared successfully');
             return $this->sendResponse($reportData, 'Transaction report generated successfully', 200);
         } catch (\Exception $e) {
+            \Log::error('Error in getTransactionReports:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->sendError($e->getMessage(), 'Failed to generate transaction report', 500);
         }
     }

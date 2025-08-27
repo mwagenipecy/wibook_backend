@@ -73,7 +73,7 @@ class User extends Authenticatable
     // In User.php model
 public function projects()
 {
-    return $this->belongsToMany(Project::class, 'project_user', 'user_id', 'project_id');
+    return $this->belongsToMany(Project::class, 'project_has_users', 'user_id', 'project_id');
 }
 
 
