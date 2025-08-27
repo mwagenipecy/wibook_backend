@@ -17,13 +17,28 @@ class TransactionController extends BaseController
     public function transactionList()
     {
         try {
+            \Log::info('transactionList called');
+            
             $user = Auth::user();
+            \Log::info('User authenticated:', ['user_id' => $user->id]);
+            
             $userProjects = $user->projects()->pluck('projects.id')->toArray();
+            \Log::info('User projects:', $userProjects);
             
             $transactions = ProjectTransaction::whereIn('project_id', $userProjects)
                 ->with(['user', 'project'])
                 ->latest()
                 ->get();
+            
+            \Log::info('Transactions found:', ['count' => $transactions->count()]);
+            
+            if ($transactions->count() > 0) {
+                \Log::info('First transaction sample:', [
+                    'id' => $transactions->first()->id,
+                    'project' => $transactions->first()->project ? $transactions->first()->project->toArray() : null,
+                    'user' => $transactions->first()->user ? $transactions->first()->user->toArray() : null,
+                ]);
+            }
 
             return $this->sendResponse(
                 ProjectTransactionResource::collection($transactions), 
@@ -31,6 +46,12 @@ class TransactionController extends BaseController
                 200
             );
         } catch (\Exception $e) {
+            \Log::error('Error in transactionList:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->sendError($e->getMessage(), 'Failed to fetch transactions', 500);
         }
     }
@@ -116,6 +137,112 @@ class TransactionController extends BaseController
                 'trace' => $e->getTraceAsString()
             ]);
             return $this->sendError($e->getMessage(), 'Failed to generate transaction report', 500);
+        }
+    }
+
+    public function getProjectDataForAI($projectId)
+    {
+        try {
+            \Log::info('getProjectDataForAI called for project:', ['project_id' => $projectId]);
+            
+            $user = Auth::user();
+            $userProjects = $user->projects()->pluck('projects.id')->toArray();
+            
+            // Check if user has access to this project
+            if (!in_array($projectId, $userProjects)) {
+                return $this->sendError('Access denied', 'You do not have access to this project', 403);
+            }
+            
+            // Get project details
+            $project = \App\Models\Project::find($projectId);
+            if (!$project) {
+                return $this->sendError('Project not found', 'The specified project does not exist', 404);
+            }
+            
+            // Get project transactions
+            $transactions = ProjectTransaction::where('project_id', $projectId)
+                ->with(['user', 'project'])
+                ->latest()
+                ->get();
+            
+            // Calculate financial metrics
+            $totalIncome = $transactions->where('type', 'income')->sum('amount');
+            $totalExpenses = $transactions->where('type', 'expenditure')->sum('amount');
+            $netAmount = $totalIncome - $totalExpenses;
+            $profitMargin = $totalIncome > 0 ? (($netAmount / $totalIncome) * 100) : 0;
+            
+            // Monthly breakdown for trends
+            $monthlyData = $transactions->groupBy(function($transaction) {
+                return \Carbon\Carbon::parse($transaction->date)->format('Y-m');
+            })->map(function($monthTransactions) {
+                return [
+                    'income' => $monthTransactions->where('type', 'income')->sum('amount'),
+                    'expenses' => $monthTransactions->where('type', 'expenditure')->sum('amount'),
+                    'net' => $monthTransactions->where('type', 'income')->sum('amount') - $monthTransactions->where('type', 'expenditure')->sum('amount'),
+                    'count' => $monthTransactions->count(),
+                ];
+            });
+            
+            // Top expense categories (if we had categories)
+            $expenseTransactions = $transactions->where('type', 'expenditure');
+            $topExpenses = $expenseTransactions->take(5)->map(function($transaction) {
+                return [
+                    'description' => $transaction->description,
+                    'amount' => $transaction->amount,
+                    'date' => $transaction->date,
+                ];
+            });
+            
+            // Income sources
+            $incomeTransactions = $transactions->where('type', 'income');
+            $incomeSources = $incomeTransactions->take(5)->map(function($transaction) {
+                return [
+                    'description' => $transaction->description,
+                    'amount' => $transaction->amount,
+                    'date' => $transaction->date,
+                ];
+            });
+            
+            $aiData = [
+                'project' => [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'description' => $project->description,
+                    'location' => $project->location,
+                    'status' => $project->status,
+                    'created_at' => $project->created_at,
+                ],
+                'financial_summary' => [
+                    'total_transactions' => $transactions->count(),
+                    'total_income' => $totalIncome,
+                    'total_expenses' => $totalExpenses,
+                    'net_amount' => $netAmount,
+                    'profit_margin_percentage' => round($profitMargin, 2),
+                    'income_count' => $incomeTransactions->count(),
+                    'expense_count' => $expenseTransactions->count(),
+                ],
+                'monthly_trends' => $monthlyData,
+                'top_expenses' => $topExpenses,
+                'income_sources' => $incomeSources,
+                'recent_transactions' => ProjectTransactionResource::collection($transactions->take(10)),
+                'analysis_period' => [
+                    'start_date' => $transactions->min('date'),
+                    'end_date' => $transactions->max('date'),
+                    'days_analyzed' => $transactions->isNotEmpty() ? \Carbon\Carbon::parse($transactions->min('date'))->diffInDays(\Carbon\Carbon::parse($transactions->max('date'))) + 1 : 0,
+                ]
+            ];
+            
+            \Log::info('AI data prepared successfully for project:', ['project_id' => $projectId]);
+            return $this->sendResponse($aiData, 'Project data for AI consultation prepared successfully', 200);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in getProjectDataForAI:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->sendError($e->getMessage(), 'Failed to prepare project data for AI', 500);
         }
     }
 

@@ -86,6 +86,9 @@ Route::group(['prefix' => 'transaction'], function () {
   Route::get('reports',[TransactionController::class,'getTransactionReports'])->name('api.transaction.reports');
   Route::get('summary',[TransactionController::class,'getTransactionSummary'])->name('api.transaction.summary');
 
+  // Get project data for AI consultation
+  Route::get('ai-data/{projectId}',[TransactionController::class,'getProjectDataForAI'])->name('api.transaction.ai-data');
+
 });
 
 
