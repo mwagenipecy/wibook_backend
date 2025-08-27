@@ -75,6 +75,14 @@ Route::group(['prefix' => 'project'], function () {
 
 });
 
+/** ===================== TRANSACTION REPORTING =========================== */
+Route::group(['prefix' => 'transactions'], function () {
+    // Get transaction reports with filtering
+    Route::get('reports',[TransactionController::class,'getTransactionReports'])->name('api.transactions.reports');
+    
+    // Get transaction summary statistics
+    Route::get('summary',[TransactionController::class,'getTransactionSummary'])->name('api.transactions.summary');
+});
 
 
 Route::group(['prefix'=> 'user'], function () {
