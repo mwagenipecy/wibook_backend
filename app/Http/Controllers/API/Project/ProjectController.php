@@ -234,5 +234,46 @@ class ProjectController extends BaseController
     
 }
 
+    public function getProjectTransactions($projectId)
+    {
+        try {
+            // Find the project by ID
+            $project = Project::findOrFail($projectId);
+
+            // Get transactions for this specific project
+            $transactions = ProjectTransaction::where('project_id', $projectId)
+                ->latest()
+                ->get();
+
+            return $this->sendResponse(
+                ProjectTransactionResource::collection($transactions), 
+                'Project transactions successfully fetched', 
+                200
+            );
+        } catch (\Exception $e) {
+            return $this->sendError($e->getMessage(), 'Failed to fetch project transactions', 500);
+        }
+    }
+
+    public function getProjectTeam($projectId)
+    {
+        try {
+            // Find the project by ID
+            $project = Project::findOrFail($projectId);
+
+            // Get team members for this specific project
+            $userIds = ProjectHasUser::where('project_id', $projectId)->pluck('user_id')->toArray();
+            $teamMembers = User::whereIn('id', $userIds)->get();
+
+            return $this->sendResponse(
+                UserResource::collection($teamMembers), 
+                'Project team successfully fetched', 
+                200
+            );
+        } catch (\Exception $e) {
+            return $this->sendError($e->getMessage(), 'Failed to fetch project team', 500);
+        }
+    }
+
 
 }

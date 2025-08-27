@@ -67,6 +67,10 @@ Route::group(['prefix' => 'project'], function () {
             Route::post('attachUserToProject/{projectId}',[ProjectController::class,'attachUserToProject'])->name('api.project.attachUser');
             Route::post('detachUserFromProject/{projectId}',[ProjectController::class,'detachUserFromProject'])->name('api.project.detachUser');
 
+            // Project-specific transactions and team members
+            Route::get('{projectId}/transactions',[ProjectController::class,'getProjectTransactions'])->name('api.project.transactions');
+            Route::get('{projectId}/team',[ProjectController::class,'getProjectTeam'])->name('api.project.team');
+
 
 
 });
