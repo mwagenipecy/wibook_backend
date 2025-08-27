@@ -62,6 +62,11 @@ Route::group(['prefix' => 'project'], function () {
 
             Route::get('view',[ProjectController::class,'viewProject'])->name('viewProject');
 
+            // Project collaborators management
+            Route::get('listProjectUsers/{projectId}',[ProjectController::class,'listProjectUsers'])->name('api.project.listUsers');
+            Route::post('attachUserToProject/{projectId}',[ProjectController::class,'attachUserToProject'])->name('api.project.attachUser');
+            Route::post('detachUserFromProject/{projectId}',[ProjectController::class,'detachUserFromProject'])->name('api.project.detachUser');
+
 
 
 });
