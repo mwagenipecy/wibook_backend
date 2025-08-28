@@ -17,9 +17,8 @@ Route::get('/', function () {
 
 
 Route::get('/download-app', function () {
-    $file = '/var/www/html/wibook_backend/wibook.apk';
+    $file = '/var/www/html/wibook_backend/app-release.apk';
     
-    // Check if file exists
     if (!file_exists($file)) {
         abort(404);
     }
@@ -31,6 +30,7 @@ Route::get('/download-app', function () {
     
     return response()->download($file, 'wibook.apk', $headers);
 })->name('download.apk');
+
 
 
 
