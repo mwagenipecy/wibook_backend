@@ -7,8 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectTransactionResource;
 use App\Models\ProjectHasUser;
 use App\Models\ProjectTransaction;
+use App\Models\Project;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class TransactionController extends BaseController
 {
@@ -375,6 +379,227 @@ class TransactionController extends BaseController
             return $this->sendResponse(null, 'Successfully deleted', 200);
         } catch (\Exception $e) {
             return $this->sendError($e->getMessage(), 'Something went wrong', 500);
+        }
+    }
+
+    /**
+     * Export transaction reports as PDF
+     */
+    public function exportTransactionReportPDF(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            \Log::info('PDF Export requested', [
+                'user_id' => $user->id,
+                'filters' => $request->all()
+            ]);
+
+            // Get user's projects
+            $userProjects = $user->projects()->pluck('projects.id')->toArray();
+            
+            if (empty($userProjects)) {
+                return $this->sendError('No projects found', 'You must be part of at least one project to generate reports', 400);
+            }
+
+            // Build the query
+            $query = ProjectTransaction::whereIn('project_id', $userProjects)
+                ->with(['user', 'project', 'category']);
+
+            // Apply filters
+            if ($request->filled('project_id')) {
+                $query->where('project_id', $request->project_id);
+            }
+
+            if ($request->filled('type') && $request->type !== 'all') {
+                $query->where('type', $request->type);
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            if ($request->filled('year')) {
+                $query->whereYear('created_at', $request->year);
+            }
+
+            // Get transactions
+            $transactions = $query->orderBy('created_at', 'desc')->get();
+
+            // Calculate summary
+            $totalIncome = $transactions->where('type', 'income')->sum('amount');
+            $totalExpense = $transactions->where('type', 'expense')->sum('amount');
+            $netProfit = $totalIncome - $totalExpense;
+
+            // Get project name if specific project is selected
+            $projectName = null;
+            if ($request->filled('project_id')) {
+                $project = Project::find($request->project_id);
+                $projectName = $project ? $project->name : null;
+            }
+
+            // Build period string
+            $period = 'All Time';
+            if ($request->filled('year')) {
+                $period = 'Year ' . $request->year;
+            } elseif ($request->filled('start_date') && $request->filled('end_date')) {
+                $period = Carbon::parse($request->start_date)->format('M d, Y') . ' - ' . Carbon::parse($request->end_date)->format('M d, Y');
+            } elseif ($request->filled('start_date')) {
+                $period = 'From ' . Carbon::parse($request->start_date)->format('M d, Y');
+            } elseif ($request->filled('end_date')) {
+                $period = 'Until ' . Carbon::parse($request->end_date)->format('M d, Y');
+            }
+
+            // Generate monthly breakdown
+            $monthlyBreakdown = [];
+            if ($request->filled('year')) {
+                for ($month = 1; $month <= 12; $month++) {
+                    $monthTransactions = $transactions->filter(function ($transaction) use ($month, $request) {
+                        return Carbon::parse($transaction->created_at)->month === $month && 
+                               Carbon::parse($transaction->created_at)->year == $request->year;
+                    });
+
+                    $monthIncome = $monthTransactions->where('type', 'income')->sum('amount');
+                    $monthExpense = $monthTransactions->where('type', 'expense')->sum('amount');
+
+                    if ($monthIncome > 0 || $monthExpense > 0) {
+                        $monthlyBreakdown[] = [
+                            'month' => Carbon::create($request->year, $month, 1)->format('M Y'),
+                            'income' => $monthIncome,
+                            'expense' => $monthExpense,
+                            'net' => $monthIncome - $monthExpense,
+                        ];
+                    }
+                }
+            }
+
+            // Prepare data for PDF
+            $reportData = [
+                'user_name' => $user->name,
+                'project_name' => $projectName,
+                'generated_at' => Carbon::now()->format('M d, Y h:i A'),
+                'period' => $period,
+                'transaction_type' => $request->type ?? 'all',
+                'transactions' => $transactions->toArray(),
+                'summary' => [
+                    'total_income' => $totalIncome,
+                    'total_expense' => $totalExpense,
+                    'net_profit' => $netProfit,
+                ],
+                'monthly_breakdown' => $monthlyBreakdown,
+            ];
+
+            \Log::info('PDF Data prepared', [
+                'transaction_count' => count($reportData['transactions']),
+                'total_income' => $totalIncome,
+                'total_expense' => $totalExpense
+            ]);
+
+            // Generate PDF
+            $pdf = PDF::loadView('pdf.transaction-report', compact('reportData'));
+            
+            // Set PDF options
+            $pdf->setPaper('A4', 'portrait');
+            $pdf->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'sans-serif',
+                'isRemoteEnabled' => false,
+                'isHtml5ParserEnabled' => true,
+            ]);
+
+            // Generate filename
+            $filename = 'transaction-report-' . Carbon::now()->format('Y-m-d-H-i-s') . '.pdf';
+
+            \Log::info('PDF generated successfully', ['filename' => $filename]);
+
+            // Return PDF as download
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to export PDF report', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->sendError('Failed to export PDF report', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get PDF preview data (for frontend to show what will be in the PDF)
+     */
+    public function getTransactionReportPreview(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            
+            // Get user's projects
+            $userProjects = $user->projects()->pluck('projects.id')->toArray();
+            
+            if (empty($userProjects)) {
+                return $this->sendError('No projects found', 'You must be part of at least one project to generate reports', 400);
+            }
+
+            // Build the query (same as PDF export)
+            $query = ProjectTransaction::whereIn('project_id', $userProjects)
+                ->with(['user', 'project', 'category']);
+
+            // Apply filters
+            if ($request->filled('project_id')) {
+                $query->where('project_id', $request->project_id);
+            }
+
+            if ($request->filled('type') && $request->type !== 'all') {
+                $query->where('type', $request->type);
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            if ($request->filled('year')) {
+                $query->whereYear('created_at', $request->year);
+            }
+
+            // Get transactions count and summary
+            $transactions = $query->get();
+            $totalIncome = $transactions->where('type', 'income')->sum('amount');
+            $totalExpense = $transactions->where('type', 'expense')->sum('amount');
+            $netProfit = $totalIncome - $totalExpense;
+
+            $previewData = [
+                'total_transactions' => $transactions->count(),
+                'total_income' => $totalIncome,
+                'total_expense' => $totalExpense,
+                'net_profit' => $netProfit,
+                'date_range' => [
+                    'start' => $request->start_date,
+                    'end' => $request->end_date,
+                    'year' => $request->year,
+                ],
+                'filters' => [
+                    'project_id' => $request->project_id,
+                    'type' => $request->type ?? 'all',
+                ]
+            ];
+
+            return $this->sendResponse($previewData, 'PDF preview data retrieved successfully');
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to get PDF preview data', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->sendError('Failed to get preview data', $e->getMessage(), 500);
         }
     }
 }

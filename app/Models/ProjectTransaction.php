@@ -15,6 +15,7 @@ class ProjectTransaction extends Model
         'type',
         'user_id',
         'project_id',
+        'category_id',
         'date'
     ];
 
@@ -32,6 +33,14 @@ class ProjectTransaction extends Model
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the category that this transaction belongs to.
+     */
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 
 }

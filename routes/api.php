@@ -6,6 +6,7 @@ use App\Http\Controllers\API\BillboardController;
 use App\Http\Controllers\API\Project\TransactionController;
 use App\Http\Controllers\API\SummaryController;
 use App\Http\Controllers\API\AdviceController;
+use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -86,6 +87,10 @@ Route::group(['prefix' => 'transaction'], function () {
   Route::get('reports',[TransactionController::class,'getTransactionReports'])->name('api.transaction.reports');
   Route::get('summary',[TransactionController::class,'getTransactionSummary'])->name('api.transaction.summary');
 
+  // PDF export endpoints
+  Route::get('export-pdf',[TransactionController::class,'exportTransactionReportPDF'])->name('api.transaction.export-pdf');
+  Route::get('pdf-preview',[TransactionController::class,'getTransactionReportPreview'])->name('api.transaction.pdf-preview');
+
   // Get project data for AI consultation
   Route::get('ai-data/{projectId}',[TransactionController::class,'getProjectDataForAI'])->name('api.transaction.ai-data');
 
@@ -98,6 +103,29 @@ Route::group(['prefix'=> 'user'], function () {
   Route::post('create',[UserController::class,'creatProjectMember'])->name('api.user.create');
 }
 );
+
+/** ===================== CATEGORIES MANAGEMENT =========================== */
+Route::group(['prefix' => 'categories'], function () {
+    
+    // Get all categories for the authenticated user
+    Route::get('/', [CategoryController::class, 'index'])->name('api.categories.index');
+    
+    // Get categories by type (income, expense, both)
+    Route::get('type/{type}', [CategoryController::class, 'getByType'])->name('api.categories.byType');
+    
+    // Create a new category
+    Route::post('/', [CategoryController::class, 'store'])->name('api.categories.store');
+    
+    // Update an existing category
+    Route::put('{id}', [CategoryController::class, 'update'])->name('api.categories.update');
+    
+    // Delete a category
+    Route::delete('{id}', [CategoryController::class, 'destroy'])->name('api.categories.destroy');
+    
+    // Create default categories for new user
+    Route::post('defaults', [CategoryController::class, 'createDefaults'])->name('api.categories.defaults');
+    
+});
 
 
 
