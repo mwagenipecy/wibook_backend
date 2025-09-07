@@ -16,7 +16,8 @@ class ProjectTransaction extends Model
         'user_id',
         'project_id',
         'category_id',
-        'date'
+        'date',
+        'receipt_path'
     ];
 
     /**

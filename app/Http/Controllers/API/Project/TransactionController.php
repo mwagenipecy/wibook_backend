@@ -317,34 +317,142 @@ class TransactionController extends BaseController
 
     public function store(Request $request)
     {
-
         try {
-
             $validated = $request->validate([
                 'description' => 'nullable|string',
                 'amount' => 'required|numeric',
                 'type' => 'required|in:income,expenditure',
                 'project_id' => 'required|exists:projects,id',
                 'date' => 'nullable|date',
+                'receipt' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
             ]);
 
-            $validated ['user_id'] = auth()->user()->id;
+            $validated['user_id'] = auth()->user()->id;
+
+            // Handle receipt upload with compression
+            if ($request->hasFile('receipt')) {
+                $receiptFile = $request->file('receipt');
+                
+                // Generate unique filename
+                $filename = 'receipt_' . time() . '_' . uniqid() . '.jpg';
+                
+                // Store the file in storage/app/public/receipts
+                $path = $receiptFile->storeAs('receipts', $filename, 'public');
+                
+                // Compress the image
+                $this->compressImage(storage_path('app/public/' . $path));
+                
+                // Store the path in database
+                $validated['receipt_path'] = 'storage/receipts/' . $filename;
+            }
+
             $transaction = ProjectTransaction::create($validated);
 
             return $this->sendResponse(
                 ProjectTransactionResource::collection([$transaction]),
-                'successfully created',
+                'Transaction created successfully',
                 201
             );
-
             
         } catch (\Exception $e) {
-
             return $this->sendError(
                 $e->getMessage(),
-                'something went wrong'.$e->getMessage(),
+                'Failed to create transaction: ' . $e->getMessage(),
                 500
             );
+        }
+    }
+
+    /**
+     * Compress image to reduce file size
+     */
+    private function compressImage($filePath)
+    {
+        try {
+            // Get image info
+            $imageInfo = getimagesize($filePath);
+            $mimeType = $imageInfo['mime'];
+            
+            // Create image resource based on type
+            switch ($mimeType) {
+                case 'image/jpeg':
+                    $image = imagecreatefromjpeg($filePath);
+                    break;
+                case 'image/png':
+                    $image = imagecreatefrompng($filePath);
+                    break;
+                case 'image/gif':
+                    $image = imagecreatefromgif($filePath);
+                    break;
+                default:
+                    return; // Unsupported format
+            }
+            
+            if (!$image) {
+                return; // Failed to create image resource
+            }
+            
+            // Get original dimensions
+            $originalWidth = imagesx($image);
+            $originalHeight = imagesy($image);
+            
+            // Calculate new dimensions (max 800px width, maintain aspect ratio)
+            $maxWidth = 800;
+            $maxHeight = 600;
+            
+            if ($originalWidth <= $maxWidth && $originalHeight <= $maxHeight) {
+                // Image is already small enough, just compress quality
+                $newWidth = $originalWidth;
+                $newHeight = $originalHeight;
+            } else {
+                // Calculate new dimensions maintaining aspect ratio
+                $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
+                $newWidth = (int)($originalWidth * $ratio);
+                $newHeight = (int)($originalHeight * $ratio);
+            }
+            
+            // Create new image with calculated dimensions
+            $compressedImage = imagecreatetruecolor($newWidth, $newHeight);
+            
+            // Preserve transparency for PNG and GIF
+            if ($mimeType == 'image/png' || $mimeType == 'image/gif') {
+                imagealphablending($compressedImage, false);
+                imagesavealpha($compressedImage, true);
+                $transparent = imagecolorallocatealpha($compressedImage, 255, 255, 255, 127);
+                imagefilledrectangle($compressedImage, 0, 0, $newWidth, $newHeight, $transparent);
+            }
+            
+            // Resize image
+            imagecopyresampled(
+                $compressedImage, $image,
+                0, 0, 0, 0,
+                $newWidth, $newHeight,
+                $originalWidth, $originalHeight
+            );
+            
+            // Save compressed image with quality setting
+            $quality = 75; // 75% quality for good compression
+            
+            switch ($mimeType) {
+                case 'image/jpeg':
+                    imagejpeg($compressedImage, $filePath, $quality);
+                    break;
+                case 'image/png':
+                    // PNG compression level (0-9, 9 is highest compression)
+                    imagepng($compressedImage, $filePath, 6);
+                    break;
+                case 'image/gif':
+                    imagegif($compressedImage, $filePath);
+                    break;
+            }
+            
+            // Clean up memory
+            imagedestroy($image);
+            imagedestroy($compressedImage);
+            
+        } catch (\Exception $e) {
+            \Log::error('Image compression failed: ' . $e->getMessage());
+            // Continue without compression if it fails
         }
     }
 
