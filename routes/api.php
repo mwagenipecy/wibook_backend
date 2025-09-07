@@ -26,7 +26,11 @@ Route::post('register', [AuthenticationController::class, 'register']);
 
 Route::middleware( 'auth:api')->group(function () {
 
-
+    // Password update endpoint
+    Route::post('update-password', [AuthenticationController::class, 'updatePassword'])->name('api.update.password');
+    
+    // User profile update endpoint
+    Route::post('update-profile', [AuthenticationController::class, 'update'])->name('api.update.profile');
 
 ///////////////////  List of billboard apis ///////////////////////////////
 Route::group(['prefix' => 'dashboard'], function () {

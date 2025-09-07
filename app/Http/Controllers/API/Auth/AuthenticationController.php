@@ -256,6 +256,67 @@ class AuthenticationController extends BaseController
     }
 
 
+    public function updatePassword(Request $request)
+    {
+        try {
+            // Step 1: Validate request input
+            $validator = Validator::make($request->all(), [
+                'current_password' => 'required|string',
+                'new_password' => 'required|string|min:8|confirmed',
+            ], [
+                'current_password.required' => 'Current password is required.',
+                'new_password.required' => 'New password is required.',
+                'new_password.min' => 'New password must be at least 8 characters.',
+                'new_password.confirmed' => 'New password confirmation does not match.',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Step 2: Get the authenticated user
+            $user = auth()->user();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found.'
+                ], 404);
+            }
+
+            // Step 3: Verify current password
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Current password is incorrect.'
+                ], 400);
+            }
+
+            // Step 4: Update password within a transaction
+            DB::transaction(function () use ($request, $user) {
+                $user->password = bcrypt($request->new_password);
+                $user->save();
+            });
+
+            // Step 5: Return success response
+            return response()->json([
+                'success' => true,
+                'message' => 'Password updated successfully.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the password. Please try again.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function deleteAccount()
     {
         DB::beginTransaction();
